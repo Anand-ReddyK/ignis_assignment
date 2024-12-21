@@ -15,7 +15,7 @@ class JobspiderSpider(scrapy.Spider):
 
     rules = (
         Rule(LinkExtractor(allow=r'/jobs\?page=\d+&pageSize=\d+'), callback='parse', follow=True),
-        Rule(LinkExtractor(allow=r'/job-detail/'), callback='parse_job', follow=False),  # Only follow job-detail pages
+        Rule(LinkExtractor(allow=r'/job-detail/'), callback='parse_job', follow=False),
     )
 
     def __init__(self, *args, **kwargs):
@@ -23,6 +23,7 @@ class JobspiderSpider(scrapy.Spider):
         self.job_data = []
     
     def start_requests(self):
+        # Using Playwright to wait until the jobs data is loaded before scraping the page
         yield scrapy.Request(
             self.start_urls[0],
             meta=dict(
@@ -90,13 +91,40 @@ class JobspiderSpider(scrapy.Spider):
                         playwright_include_page=True,
                     ),
                 )
+        
+        active_page = response.css('li.pagination-page.active a::text').get()  # Get the active page number
+        current_page = int(active_page)
+        page_size = 20  # Page size
+        max_pages = 5  # Limit the number of pages to scrape 
+
+        # Check if next button is disabled
+        next_button_disabled = response.css('li.pagination-next.disabled').get()
+
+        # If the next button is not disabled and we haven't reached the max page limit
+        if not next_button_disabled and current_page < max_pages:
+            next_page = current_page + 1
+            next_page_url = f"https://www.dice.com/jobs?page={next_page}&pageSize={page_size}"
+            self.logger.debug(f"Next page exists: {next_page_url}")
+            yield scrapy.Request(
+                next_page_url,
+                meta=dict(
+                    playwright=True,
+                    playwright_include_page=True,
+                    playwright_page_methods=[PageMethod("wait_for_selector", "dhi-search-cards-widget")],
+                ),
+                errback=self.errback,
+            )
+        else:
+            # If no next page exists or we've reached the page limit, stop crawling
+            self.logger.info("Reached the last page or page limit, ending crawl.")
+
 
     async def parse_job(self, response):
         page = response.meta["playwright_page"]
         await page.close()
         job_item = JobItem()
         job_item['job_title'] = response.css('h1[data-cy="jobTitle"]::text').get(default='N/A')
-        job_item['company_name'] = response.css('a[data-cy="companyNameLink"]::text').get(default='N/A')
+        job_item['company_name'] = response.css('a[data-cy="companyNameLink"]::text').get(default=None) or response.css('span[data-cy="companyNameNoLink"]::text').get(default='N/A')
         job_item['posted_time'] = response.css('span#timeAgo::text').get(default='N/A')
         job_item['location'] = response.css('span[id^="location"]::text').get(default='N/A')
         job_item['pay'] = response.css('span[id^="payChip"]::text').get(default='N/A')
@@ -106,7 +134,7 @@ class JobspiderSpider(scrapy.Spider):
         job_item['required_skills'] = response.css('div[data-testid="jobDescriptionHtml"] ul:first-of-type li::text').getall()
         job_item['preferred_skills'] = response.css('div[data-testid="jobDescriptionHtml"] ul:last-of-type li::text').getall()
         job_item['job_link'] = response.url
-
+        # After scraping a job, we store it in the job_data list and the data is sent to the server when the spider closes
         self.job_data.append(job_item)
 
     async def errback(self, failure):
