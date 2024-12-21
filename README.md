@@ -16,7 +16,7 @@ I used Django CORS headers to enable cross-origin requests, allowing the fronten
 
 # Frontend Development
 
-Unfortunately, due to the tight submission deadline, I was unable to dedicate as much time to the frontend development as I had hoped. I wish I could have showcased more of my frontend skills and provided a more polished user interface. However, I am confident in my ability to enhance and refine the frontend further given additional time.
+> Unfortunately, due to the tight submission deadline, I was unable to dedicate as much time to the frontend development as I had hoped. I wish I could have showcased more of my frontend skills and provided a more polished user interface. However, I am confident in my ability to enhance and refine the frontend further given additional time.
 
 I used React.js to fetch the data from the API and display it on the frontend. This enables a dynamic and interactive user interface that effectively presents the job listings retrieved from the backend.
 
