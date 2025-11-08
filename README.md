@@ -10,7 +10,7 @@ I integrated Django REST Framework with MySQL to efficiently store the received 
 
 .backend/backend/settings.py
 
-![image](https://github.com/user-attachments/assets/ca334db4-56d1-434e-bc8d-efc5f5ca6733)
+![image](
 
 I used Django CORS headers to enable cross-origin requests, allowing the frontend to access the API endpoints securely. This configuration ensures seamless communication between the frontend and backend, regardless of their respective domains.
 
